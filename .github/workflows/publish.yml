@@ -1,0 +1,50 @@
+name: Publish daily story
+
+on:
+  schedule:
+    # 17:37 Bucharest time (winter, UTC+2) = 15:37 UTC
+    - cron: "37 15 * * *"
+    # Backup run at 19:07 Bucharest, in case the first one was skipped (no double posts: it checks first)
+    - cron: "7 17 * * *"
+  workflow_dispatch:
+    inputs:
+      story_number:
+        description: "Story number to publish (leave empty = today's story)"
+        required: false
+        default: ""
+      dry_run:
+        description: "Test only (create containers, do NOT publish)"
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+
+concurrency:
+  group: publish
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Publish to Instagram
+        env:
+          IG_TOKEN: ${{ secrets.IG_TOKEN }}
+          IG_USER_ID: "17841424464874525"
+          STORY_NUMBER: ${{ github.event.inputs.story_number }}
+          DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.dry_run || 'false' }}
+        run: python3 publish.py
+
+      - name: Save posting log
+        run: |
+          if [ -n "$(git status --porcelain posted.json)" ]; then
+            git config user.name "iliaCollections bot"
+            git config user.email "actions@github.com"
+            git add posted.json
+            git commit -m "Posted story $(python3 -c 'import json;print(max(json.load(open("posted.json"))))')"
+            git push
+          fi
