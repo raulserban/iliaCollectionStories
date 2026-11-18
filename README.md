@@ -27,3 +27,9 @@ Automated daily publishing for the Instagram page **@iliacollectionstories**: 10
 - **Change hashtags or a date:** edit `schedule.json` directly on GitHub.
 - **Change the posting time:** edit the `cron` lines in `.github/workflows/publish.yml` (times are UTC; Bucharest = UTC+2 in winter).
 - **New token:** Settings → Secrets and variables → Actions → `IG_TOKEN` → Update.
+
+## iliaCollection | Cars
+
+- `cars/schedule.json`: cars 074–100, one per day from 2026-11-19, 5 slides each (`cars/NNN/1..5.jpg`).
+- Workflow **Publish daily car** posts to @iliacollectioncars at 17:47 Bucharest (backup run 19:17).
+- Same `IG_TOKEN` secret; the account must be assigned to the system user.
