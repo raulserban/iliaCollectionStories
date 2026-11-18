@@ -46,6 +46,5 @@ jobs:
             git config user.email "actions@github.com"
             git add posted.json
             git commit -m "Posted story $(python3 -c 'import json;print(max(json.load(open("posted.json"))))')"
-            git pull --rebase
             git push
           fi
