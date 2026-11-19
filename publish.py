@@ -79,7 +79,17 @@ def main():
         if not story:
             raise SystemExit(f"Story {STORY_NUMBER} not in schedule")
     else:
-        today = datetime.datetime.now(ZoneInfo("Europe/Bucharest")).date().isoformat()
+        now = datetime.datetime.now(ZoneInfo("Europe/Bucharest"))
+        # Scheduled runs only post inside the posting window (Bucharest time).
+        # GitHub can start cron runs hours late; a run for yesterday that starts
+        # after midnight must NOT post today's item early.
+        if os.environ.get("GITHUB_EVENT_NAME") == "schedule":
+            start = os.environ.get("WINDOW_START", "17:30")
+            end = os.environ.get("WINDOW_END", "22:00")
+            if not (start <= now.strftime("%H:%M") <= end):
+                log(f"Outside posting window {start}-{end} (now {now:%Y-%m-%d %H:%M} Bucharest). Skipping.")
+                return
+        today = now.date().isoformat()
         story = next((s for s in schedule if s["date"] == today), None)
         if not story:
             log(f"No story scheduled for {today}. Nothing to do.")
