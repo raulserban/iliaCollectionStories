@@ -79,21 +79,34 @@ def main():
         if not story:
             raise SystemExit(f"Story {STORY_NUMBER} not in schedule")
     else:
-        now = datetime.datetime.now(ZoneInfo("Europe/Bucharest"))
-        # Scheduled runs only post inside the posting window (Bucharest time).
-        # GitHub can start cron runs hours late; a run for yesterday that starts
-        # after midnight must NOT post today's item early.
-        if os.environ.get("GITHUB_EVENT_NAME") == "schedule":
-            start = os.environ.get("WINDOW_START", "17:30")
-            end = os.environ.get("WINDOW_END", "22:00")
-            if not (start <= now.strftime("%H:%M") <= end):
-                log(f"Outside posting window {start}-{end} (now {now:%Y-%m-%d %H:%M} Bucharest). Skipping.")
-                return
-        today = now.date().isoformat()
-        story = next((s for s in schedule if s["date"] == today), None)
-        if not story:
-            log(f"No story scheduled for {today}. Nothing to do.")
+        # Rule: an item may be posted LATE (even after midnight), never EARLY.
+        # Each item is due at its date + POST_TIME (Bucharest). A run posts the
+        # oldest item that is due and not yet posted. GitHub may start cron runs
+        # hours late, so the run's own clock must never pick the item by itself.
+        tz = ZoneInfo("Europe/Bucharest")
+        now = datetime.datetime.now(tz)
+        hh, mm = map(int, os.environ.get("POST_TIME", "17:37").split(":"))
+        def due_at(s):
+            d = datetime.date.fromisoformat(s["date"])
+            return datetime.datetime(d.year, d.month, d.day, hh, mm, tzinfo=tz)
+        due = [s for s in schedule if due_at(s) <= now and f"{s['number']:03d}" not in posted]
+        if not due:
+            nxt = next((s for s in schedule if due_at(s) > now), None)
+            log(f"Nothing due now ({now:%Y-%m-%d %H:%M} Bucharest). Next: "
+                + (f"{nxt['number']:03d} at {due_at(nxt):%Y-%m-%d %H:%M}" if nxt else "none"))
             return
+        story = min(due, key=due_at)
+        # Catch-up safety: never post two items within 90 minutes of each other
+        # (only matters if a whole day was missed and two items are overdue).
+        last = max((v.get("timestamp") or "" for v in posted.values()), default="")
+        if last:
+            last_dt = datetime.datetime.strptime(last, "%Y-%m-%dT%H:%M:%S%z")
+            if now - last_dt < datetime.timedelta(minutes=90):
+                log(f"{story['number']:03d} is due, but the last post was at {last_dt.astimezone(tz):%Y-%m-%d %H:%M}. "
+                    "Waiting (min. 90 min between posts).")
+                return
+        late = now - due_at(story)
+        log(f"{story['number']:03d} was due at {due_at(story):%Y-%m-%d %H:%M} ({int(late.total_seconds() // 60)} min late).")
 
     num = f"{story['number']:03d}"
     if num in posted and not DRY_RUN:

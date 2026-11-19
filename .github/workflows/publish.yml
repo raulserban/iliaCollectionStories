@@ -4,8 +4,8 @@ on:
   schedule:
     # Main run 17:37 Bucharest (winter, UTC+2). GitHub sometimes starts cron runs late,
     # so there are extra runs every 30 min. The first one that runs posts; the rest skip.
-    # publish.py only posts between 17:30 and 22:00 Bucharest, so a late run never
-    # posts after midnight (that is what happened on 19.11.2026).
+    # publish.py posts the oldest item whose date + time has already passed:
+    # a late run (even after midnight) posts late, never a day early.
     - cron: "37 15 * * *"
     - cron: "7 16 * * *"
     - cron: "37 16 * * *"
