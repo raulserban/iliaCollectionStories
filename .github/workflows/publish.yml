@@ -2,15 +2,13 @@ name: Publish daily story
 
 on:
   schedule:
-    # Main run 17:37 Bucharest (winter, UTC+2). GitHub sometimes starts cron runs late,
-    # so there are extra runs every 30 min. The first one that runs posts; the rest skip.
-    # publish.py posts the oldest item whose date + time has already passed:
-    # a late run (even after midnight) posts late, never a day early.
-    - cron: "37 15 * * *"
-    - cron: "7 16 * * *"
-    - cron: "37 16 * * *"
-    - cron: "7 17 * * *"
-    - cron: "37 17 * * *"
+    # Post time is 17:37 Bucharest (POST_TIME in publish.py) - that never changes.
+    # GitHub starts our cron runs ~7 hours late, so runs are spread over the day:
+    # every 30 min from 10:37 to 19:37 Bucharest (08:37-17:37 UTC). A run that
+    # starts before 17:37 finds nothing due and stops; the first run that starts
+    # after 17:37 posts. Works whether GitHub is on time or hours late.
+    - cron: "37 8-17 * * *"
+    - cron: "7 9-17 * * *"
   workflow_dispatch:
     inputs:
       story_number:
